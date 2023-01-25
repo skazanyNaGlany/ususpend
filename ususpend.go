@@ -6,17 +6,22 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
+	"syscall"
+
+	"github.com/shirou/gopsutil/process"
 )
 
 const AppName = "USUSPEND"
 const AppVersion = "0.1"
-const IgnoreFilePathname = "./ususpend.ignore"
+const IgnoreFilePathname = "./ususpend.ignore.txt"
+const MinUid = 1000 // users UIDs start from 1000
 
 var exeDir = filepath.Dir(os.Args[0])
 var fullIgnoreFilePathname = filepath.Join(exeDir, IgnoreFilePathname)
-var ignoreData = make([]string, 0)
+var ignoreData = make([]*regexp.Regexp, 0)
 
 func duplicateLog() {
 	logFilename := filepath.Base(os.Args[0]) + ".txt"
@@ -39,7 +44,7 @@ func printAppName() {
 	log.Println(
 		getFullAppName())
 	log.Println()
-	log.Println("Suspend or resume non-system processes.")
+	log.Println("Suspend or resume non-system (users) processes.")
 	log.Println()
 }
 
@@ -77,10 +82,21 @@ func createIgnoreFile() {
 		return
 	}
 
-	empty := `# processes to be ignored, line by line
-	# you can use regex, for example:
-	# .*docker.*
-	`
+	empty := `# processes to be ignored, by command line, line by line
+#
+# lines started with # will be ignored
+# you can use regex
+#
+# example of ignored process by full command line
+# /opt/google/chrome/chrome --type=renderer --crashpad-handler-pid=.* --enable-crash-reporter=.*
+
+# do not touch ususpend
+.*ususpend.*
+
+# do not touch docker
+.*docker.*
+
+`
 
 	log.Printf("%v does not exists, creating default.", fullIgnoreFilePathname)
 
@@ -107,12 +123,92 @@ func readIgnoreFile() {
 			continue
 		}
 
-		ignoreData = append(ignoreData, line)
+		compiledRegEx, err := regexp.Compile(line)
+
+		if err != nil {
+			log.Fatalln("cannot compile", line, ":", err)
+		}
+
+		ignoreData = append(ignoreData, compiledRegEx)
 	}
 }
 
 func changeCurrentWorkingDir() {
 	os.Chdir(exeDir)
+}
+
+func resume(resume bool) {
+	processes, err := process.Processes()
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	for _, iprocess := range processes {
+		cmdLine, err := iprocess.Cmdline()
+
+		if err != nil {
+			log.Println(err)
+
+			continue
+		}
+
+		uids, err := iprocess.Uids()
+
+		if err != nil {
+			log.Println(err)
+
+			continue
+		}
+
+		cmdLine = strings.TrimSpace(cmdLine)
+
+		if !isUserProcess(uids) {
+			log.Println("ignore", cmdLine, "[system]")
+
+			continue
+		}
+
+		if isIgnoredProcess(cmdLine) {
+			log.Println("ignore", cmdLine)
+
+			continue
+		}
+
+		if resume {
+			log.Println("resume", cmdLine)
+
+			err = iprocess.SendSignal(syscall.SIGCONT)
+		} else {
+			log.Println("suspend", cmdLine)
+
+			err = iprocess.SendSignal(syscall.SIGSTOP)
+		}
+
+		if err != nil {
+			log.Println("cannot send signal to", cmdLine, ":", err)
+		}
+	}
+}
+
+func isIgnoredProcess(cmdLine string) bool {
+	for _, rex := range ignoreData {
+		if rex.MatchString(cmdLine) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func isUserProcess(uids []int32) bool {
+	for _, iuid := range uids {
+		if iuid >= MinUid {
+			return true
+		}
+	}
+
+	return false
 }
 
 func main() {
@@ -131,9 +227,11 @@ func main() {
 	if os.Args[1] == "--resume" {
 		createIgnoreFile()
 		readIgnoreFile()
+		resume(true)
 	} else if os.Args[1] == "--suspend" {
 		createIgnoreFile()
 		readIgnoreFile()
+		resume(false)
 	} else {
 		printAppInfo()
 		printUsages()
