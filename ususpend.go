@@ -18,7 +18,9 @@ const AppName = "USUSPEND"
 const AppVersion = "0.1"
 const IgnoreFilePathname = "./ususpend.ignore.txt"
 const MinUid = 1000 // users UIDs start from 1000
-const defaultIgnore = `# processes to be ignored, by command line, line by line
+const ResumeShPathname = "./resume.sh"
+const SuspendShPathname = "./suspend.sh"
+const DefaultIgnore = `# processes to be ignored, by command line, line by line
 #
 # lines started with # will be ignored
 # you can use regex
@@ -31,6 +33,24 @@ const defaultIgnore = `# processes to be ignored, by command line, line by line
 
 # do not touch docker
 .*docker.*
+`
+const DefaultResumeSh = `# this will switch to 7 terminal
+# where you should have your X
+# session and resume all the
+# processes
+sudo chvt 7
+sudo {{exe_pathname}} --resume
+
+`
+const DefaultSuspendSh = `
+# this will switch to first terminal
+# where you should have your root
+# session, and able to run resume.sh
+# and then (after switch) will suspend
+# all the processes
+sudo chvt 1
+sudo {{exe_pathname}} --suspend
+
 `
 
 var exeDir = filepath.Dir(os.Args[0])
@@ -91,6 +111,34 @@ func checkPlatform() {
 	}
 }
 
+func createResumeShFile() {
+	if _, err := os.Stat(ResumeShPathname); err == nil {
+		return
+	}
+
+	log.Printf("%v does not exists, creating default.", ResumeShPathname)
+
+	defaultResumeSh := strings.ReplaceAll(DefaultResumeSh, "{{exe_pathname}}", os.Args[0])
+
+	os.WriteFile(ResumeShPathname, []byte(defaultResumeSh), 0777)
+
+	log.Printf("%v created.\n", ResumeShPathname)
+}
+
+func createSuspendShFile() {
+	if _, err := os.Stat(SuspendShPathname); err == nil {
+		return
+	}
+
+	log.Printf("%v does not exists, creating default.", SuspendShPathname)
+
+	defaultSuspendSh := strings.ReplaceAll(DefaultSuspendSh, "{{exe_pathname}}", os.Args[0])
+
+	os.WriteFile(SuspendShPathname, []byte(defaultSuspendSh), 0777)
+
+	log.Printf("%v created.\n", SuspendShPathname)
+}
+
 func createIgnoreFile() {
 	if _, err := os.Stat(fullIgnoreFilePathname); err == nil {
 		return
@@ -98,7 +146,7 @@ func createIgnoreFile() {
 
 	log.Printf("%v does not exists, creating default.", fullIgnoreFilePathname)
 
-	os.WriteFile(fullIgnoreFilePathname, []byte(defaultIgnore), 0666)
+	os.WriteFile(fullIgnoreFilePathname, []byte(DefaultIgnore), 0666)
 
 	log.Printf("%v created.\n", fullIgnoreFilePathname)
 }
@@ -223,10 +271,14 @@ func main() {
 	}
 
 	if os.Args[1] == "--resume" {
+		createResumeShFile()
+		createSuspendShFile()
 		createIgnoreFile()
 		readIgnoreFile()
 		resume(true)
 	} else if os.Args[1] == "--suspend" {
+		createResumeShFile()
+		createSuspendShFile()
 		createIgnoreFile()
 		readIgnoreFile()
 		resume(false)
