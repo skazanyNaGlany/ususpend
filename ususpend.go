@@ -54,6 +54,7 @@ sudo {{exe_pathname}} --suspend
 `
 
 var exeDir = filepath.Dir(os.Args[0])
+var exePath, _ = filepath.Abs(os.Args[0])
 var fullIgnoreFilePathname = filepath.Join(exeDir, IgnoreFilePathname)
 var ignoreData = make([]*regexp.Regexp, 0)
 
@@ -118,7 +119,7 @@ func createResumeShFile() {
 
 	log.Printf("%v does not exists, creating default.", ResumeShPathname)
 
-	defaultResumeSh := strings.ReplaceAll(DefaultResumeSh, "{{exe_pathname}}", os.Args[0])
+	defaultResumeSh := strings.ReplaceAll(DefaultResumeSh, "{{exe_pathname}}", exePath)
 
 	os.WriteFile(ResumeShPathname, []byte(defaultResumeSh), 0777)
 
@@ -132,7 +133,7 @@ func createSuspendShFile() {
 
 	log.Printf("%v does not exists, creating default.", SuspendShPathname)
 
-	defaultSuspendSh := strings.ReplaceAll(DefaultSuspendSh, "{{exe_pathname}}", os.Args[0])
+	defaultSuspendSh := strings.ReplaceAll(DefaultSuspendSh, "{{exe_pathname}}", exePath)
 
 	os.WriteFile(SuspendShPathname, []byte(defaultSuspendSh), 0777)
 
