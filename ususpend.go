@@ -18,6 +18,20 @@ const AppName = "USUSPEND"
 const AppVersion = "0.1"
 const IgnoreFilePathname = "./ususpend.ignore.txt"
 const MinUid = 1000 // users UIDs start from 1000
+const defaultIgnore = `# processes to be ignored, by command line, line by line
+#
+# lines started with # will be ignored
+# you can use regex
+#
+# example of ignored process by full command line
+# /opt/google/chrome/chrome --type=renderer --crashpad-handler-pid=.* --enable-crash-reporter=.*
+
+# do not touch ususpend
+.*ususpend.*
+
+# do not touch docker
+.*docker.*
+`
 
 var exeDir = filepath.Dir(os.Args[0])
 var fullIgnoreFilePathname = filepath.Join(exeDir, IgnoreFilePathname)
@@ -82,25 +96,9 @@ func createIgnoreFile() {
 		return
 	}
 
-	empty := `# processes to be ignored, by command line, line by line
-#
-# lines started with # will be ignored
-# you can use regex
-#
-# example of ignored process by full command line
-# /opt/google/chrome/chrome --type=renderer --crashpad-handler-pid=.* --enable-crash-reporter=.*
-
-# do not touch ususpend
-.*ususpend.*
-
-# do not touch docker
-.*docker.*
-
-`
-
 	log.Printf("%v does not exists, creating default.", fullIgnoreFilePathname)
 
-	os.WriteFile(fullIgnoreFilePathname, []byte(empty), 0666)
+	os.WriteFile(fullIgnoreFilePathname, []byte(defaultIgnore), 0666)
 
 	log.Printf("%v created.\n", fullIgnoreFilePathname)
 }
