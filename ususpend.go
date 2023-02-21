@@ -279,6 +279,14 @@ func main() {
 		createSuspendShFile()
 		createIgnoreFile()
 		readIgnoreFile()
+
+		log.Println("Resume for the first time...")
+		resume(true)
+
+		// few processes will just not resume if child
+		// process is suspended, just resume again
+		log.Println("Resume for the second time...")
+
 		resume(true)
 	} else if os.Args[1] == "--suspend" {
 		createResumeShFile()
