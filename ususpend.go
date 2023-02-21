@@ -33,6 +33,9 @@ const DefaultIgnore = `# processes to be ignored, by command line, line by line
 
 # do not touch docker
 .*docker.*
+
+# sh scripts does not like suspending
+^.*\.sh$
 `
 const DefaultResumeSh = `# this will switch to 7 terminal
 # where you should have your X
