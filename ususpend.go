@@ -229,29 +229,29 @@ func resume(resume bool) {
 		cmdLine = strings.TrimSpace(cmdLine)
 
 		if !isUserProcess(uids) {
-			log.Println("ignore", cmdLine, "[system]")
+			log.Println(iprocess.Pid, "ignore", cmdLine, "[system]")
 
 			continue
 		}
 
 		if isIgnoredProcess(cmdLine) {
-			log.Println("ignore", cmdLine)
+			log.Println(iprocess.Pid, "ignore", cmdLine)
 
 			continue
 		}
 
 		if resume {
-			log.Println("resume", cmdLine)
+			log.Println(iprocess.Pid, "resume", cmdLine)
 
 			err = iprocess.SendSignal(syscall.SIGCONT)
 		} else {
-			log.Println("suspend", cmdLine)
+			log.Println(iprocess.Pid, "suspend", cmdLine)
 
 			err = iprocess.SendSignal(syscall.SIGSTOP)
 		}
 
 		if err != nil {
-			log.Println("cannot send signal to", cmdLine, ":", err)
+			log.Println(iprocess.Pid, "cannot send signal to", cmdLine, ":", err)
 		}
 	}
 }
