@@ -37,6 +37,10 @@ const DefaultIgnore = `# processes to be ignored, by command line, line by line
 
 # sh scripts does not like suspending
 ^.*\.sh$
+
+# do not touch bash
+.*bash.*
+
 `
 const DefaultResumeSh = `# this will switch to 7 terminal
 # where you should have your X
