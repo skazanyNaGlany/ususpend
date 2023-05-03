@@ -20,6 +20,7 @@ const IgnoreFilePathname = "./ususpend.ignore.txt"
 const MinUid = 1000 // users UIDs start from 1000
 const ResumeShPathname = "./resume.sh"
 const SuspendShPathname = "./suspend.sh"
+const LogMaxSizeBytes = 10485760 // 10MB
 const DefaultIgnore = `# processes to be ignored, by command line, line by line
 #
 # lines started with # will be ignored
@@ -63,6 +64,16 @@ var ignoreData = make([]*regexp.Regexp, 0)
 
 func duplicateLog() {
 	logFilename := filepath.Base(os.Args[0]) + ".txt"
+
+	// truncate log file to LogMaxSizeBytes bytes
+	fileInfo, err := os.Stat(logFilename)
+
+	if err == nil {
+		if fileInfo.Size() >= LogMaxSizeBytes {
+			os.Remove(logFilename)
+		}
+	}
+
 	logFile, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 
 	if err != nil {
